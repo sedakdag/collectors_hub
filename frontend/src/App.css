@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:ital@0;1&display=swap');
+
+:root {
+  --vintage-bg: #FAEBD7; /* Antique White */
+  --ethnic-red: #A0522D; /* Sienne/Toprak tonu */
+  --vintage-text: #2F4F4F;
+  --accent-gold: #DAA520;
+}
+
+body {
+  background-color: var(--vintage-bg);
+  color: var(--vintage-text);
+  font-family: 'Lora', serif;
+  /* Hafif bir kağıt dokusu efekti için */
+  background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+  color: var(--ethnic-red);
+  text-transform: capitalize;
+}
+
+/* Etnik Desenli Bölücü */
+.ethnic-divider {
+  height: 10px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--ethnic-red),
+    var(--ethnic-red) 10px,
+    var(--accent-gold) 10px,
+    var(--accent-gold) 20px
+  );
+  margin: 20px 0;
+  border-radius: 5px;
+}

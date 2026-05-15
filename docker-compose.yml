@@ -8,14 +8,14 @@ services:
       POSTGRES_PASSWORD: 12345
       POSTGRES_DB: collectors_hub
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - ./db/init:/docker-entrypoint-initdb.d 
 
   backend:
     build: ./backend
     ports:
-      - "5000:5000"
+      - "8080:5000"
     environment:
       DATABASE_URL: postgres://yapsed:12345@db:5432/collectors_hub
       # Proje gereksinimi: JWT Token tabanlı authentication [cite: 24]
