@@ -10,7 +10,7 @@ services:
     ports:
       - "5435:5432"
     volumes:
-      - ./db/init:/docker-entrypoint-initdb.d 
+      - ./seed.sql:/docker-entrypoint-initdb.d/seed.sql 
 
   backend:
     build: ./backend
