@@ -1,7 +1,21 @@
-FROM node:18
+# Node yerine Python kullanıyoruz
+FROM python:3.11-slim
+
+# Çalışma dizini
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+
+# Gerekli kütüphaneleri kopyala ve yükle
+# (Klasöründe requirements.txt yoksa aşağıda manuel yüklemeyi de yazdım)
 COPY . .
+
+RUN pip install --no-cache-dir \
+    "fastapi[all]" \
+    "uvicorn" \
+    "python-jose[cryptography]" \
+    "passlib[bcrypt]" \
+    "bcrypt==4.0.1"
+# Portu aç
 EXPOSE 5000
-CMD ["node", "index.js"]
+
+# FastAPI'yi başlat
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]

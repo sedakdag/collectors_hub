@@ -11,6 +11,8 @@ const featuredItems = [
   { id: 4, title: "The Beatles", img: "https://m.media-amazon.com/images/I/8179uBA8zBL.jpg" },
 ];
 
+const username = localStorage.getItem('username') || 'MISAFIR';
+
 const Dashboard = () => {
   return (
     <div className="flex h-screen bg-[#fdfaf3] font-['Montserrat'] overflow-hidden text-[#333]">
@@ -18,7 +20,9 @@ const Dashboard = () => {
       <aside className="w-[85px] bg-[#c5e3f4] flex flex-col items-center py-8 border-r border-black/5">
         <div className="flex flex-col items-center mb-10">
           <img src="https://i.pravatar.cc/150?u=seda" className="w-11 h-11 rounded-xl border-2 border-white shadow-sm object-cover" alt="Seda" />
-          <span className="text-[10px] font-extrabold text-[#5a7b8f] mt-2 tracking-wider uppercase">Seda</span>
+          <span className="text-[10px] font-black text-[#5a7b8f] mt-2 tracking-widest uppercase">
+                {username}
+            </span>
         </div>
         
         <nav className="flex flex-col gap-6 flex-1 items-center w-full">
