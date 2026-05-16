@@ -24,19 +24,24 @@ const Explore = () => {
 
   // Filtreleme mantığı
 // Filtreleme mantığı
-  const filteredItems = items.filter(item => {
-    // 1. Arama filtresi
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.artist?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // 2. Kategori filtresi
-    if (selectedCategory === "All") return matchesSearch;
-    if (selectedCategory === "Vinyl") return matchesSearch && item.category_id === 1;
-    if (selectedCategory === "CDs") return matchesSearch && item.category_id === 3;
-    if (selectedCategory === "Photocards") return matchesSearch && item.category_id === 2;
-    
-    return matchesSearch;
-  });
+  // --- KURŞUNGEÇİRMEZ FİLTRELEME MANTIĞI ---
+  // Array.isArray(items) kontrolü sayesinde backend'den liste gelmediyse bile uygulama asla çökmez.
+  // Seda'nın önerdiği ?. (optional chaining) mantığını da ekledik.
+  const filteredItems = Array.isArray(items) 
+    ? items.filter(item => {
+        // 1. Arama filtresi
+        const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              item.artist?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // 2. Kategori filtresi
+        if (selectedCategory === "All") return matchesSearch;
+        if (selectedCategory === "Vinyl") return matchesSearch && item.category_id === 1;
+        if (selectedCategory === "CDs") return matchesSearch && item.category_id === 3;
+        if (selectedCategory === "Photocards") return matchesSearch && item.category_id === 2;
+        
+        return matchesSearch;
+      })
+    : []; // Eğer items bir dizi değilse boş bir liste dön ki ekran patlamasın
 
   return (
     <div className="min-h-screen bg-[#fdfaf3] p-10 font-['Montserrat']">
