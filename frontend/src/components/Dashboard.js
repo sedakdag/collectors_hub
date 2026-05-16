@@ -12,10 +12,11 @@ const featuredItems = [
   { id: 4, title: "The Beatles", img: "https://m.media-amazon.com/images/I/8179uBA8zBL.jpg" },
 ];
 
-const username = localStorage.getItem('username') || 'MISAFIR';
-
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  const username = localStorage.getItem('username') || 'MISAFIR';
+  
   return (
     <div className="flex h-screen bg-[#fdfaf3] font-['Montserrat'] overflow-hidden text-[#333]">
       {/* SIDEBAR */}
