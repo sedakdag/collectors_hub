@@ -1,13 +1,18 @@
 
 import React, { useState, useEffect } from "react";
 import { Search, Filter, Disc, Images, DiscAlbum, ChevronLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // Sayfalar arası geçiş için
+import { useNavigate, useLocation } from "react-router-dom"; // Sayfalar arası geçiş için
 
 const Explore = () => {
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  
   const navigate = useNavigate();
+  const location = useLocation(); 
+
+  
+  const [selectedCategory, setSelectedCategory] = useState(location.state?.category || "All");
+  
 
   useEffect(() => {
     // Backend'den tüm koleksiyonu çekiyoruz
@@ -18,9 +23,18 @@ const Explore = () => {
   }, []);
 
   // Filtreleme mantığı
+// Filtreleme mantığı
   const filteredItems = items.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
-    // Not: Category ID'lerine göre burada filtreleme yapabilirsin
+    // 1. Arama filtresi
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.artist?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // 2. Kategori filtresi
+    if (selectedCategory === "All") return matchesSearch;
+    if (selectedCategory === "Vinyl") return matchesSearch && item.category_id === 1;
+    if (selectedCategory === "CDs") return matchesSearch && item.category_id === 3;
+    if (selectedCategory === "Photocards") return matchesSearch && item.category_id === 2;
+    
     return matchesSearch;
   });
 
