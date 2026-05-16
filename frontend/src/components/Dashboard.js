@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   LayoutGrid, Bell, Bookmark, Users, Settings, Search, 
   Plus, LogOut, Disc, Images, DiscAlbum, Laptop, Mail, PenTool 
@@ -14,6 +15,7 @@ const featuredItems = [
 const username = localStorage.getItem('username') || 'MISAFIR';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   return (
     <div className="flex h-screen bg-[#fdfaf3] font-['Montserrat'] overflow-hidden text-[#333]">
       {/* SIDEBAR */}
@@ -32,8 +34,12 @@ const Dashboard = () => {
           </div>
           <NavItem icon={<Bell size={22} />} />
           <NavItem icon={<Bookmark size={22} />} />
-          <NavItem icon={<Users size={22} />} />
-          <NavItem icon={<Settings size={22} />} />
+          <div onClick={() => navigate("/social")} className="w-full flex justify-center cursor-pointer">
+            <NavItem icon={<Users size={22} />} />
+          </div>
+          <div onClick={() => navigate("/explore")} className="w-full flex justify-center cursor-pointer">
+            <NavItem icon={<Settings size={22} />} />
+          </div>
         </nav>
 
         <div className="flex flex-col items-center gap-6">
@@ -91,6 +97,14 @@ const Dashboard = () => {
         <div className="grid grid-cols-[1.2fr_1fr] gap-12">
           <div>
             <h3 className="font-extrabold text-sm mb-6 tracking-widest text-gray-400 uppercase">Continue Browsing..</h3>
+            <button 
+                onClick={() => navigate("/explore")}
+                className="block mb-8 text-[11px] font-black bg-[#dfd3ef] text-[#8e7eb5] px-4 py-2 rounded-xl hover:bg-[#8e7eb5] hover:text-white hover:shadow-md transition-all uppercase tracking-wider"
+              >
+                See All
+              </button>
+              
+              
             <div className="flex gap-6">
               {/* Düzenlenen BrowseCard: Tüm kutu beraber hareket ediyor */}
               <BrowseCard title="Pink Floyd - Vinyl" img="https://upload.wikimedia.org/wikipedia/en/3/3b/Dark_Side_of_the_Moon.png" />
@@ -162,14 +176,22 @@ const NavItem = ({ icon }) => (
   </div>
 );
 
-const BrowseCard = ({ title, img }) => (
-  <div className="flex-1 bg-white/40 border border-[#e8dfd0] rounded-2xl p-4 transition-all duration-300 cursor-pointer group hover:bg-white hover:shadow-xl hover:-translate-y-2">
-    <div className="overflow-hidden rounded-xl h-28 mb-4 shadow-inner">
-        <img src={img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={title} />
+
+const BrowseCard = ({ title, img }) => {
+  const navigate = useNavigate(); // Sayfa değiştirebilmek için bunu ekledik
+  
+  return (
+    <div 
+      onClick={() => navigate("/product")} // Tıklanınca şimdilik Abbey Road detayına fırlatır
+      className="flex-1 bg-white/40 border border-[#e8dfd0] rounded-2xl p-4 transition-all duration-300 cursor-pointer group hover:bg-white hover:shadow-xl hover:-translate-y-2"
+    >
+      <div className="overflow-hidden rounded-xl h-28 mb-4 shadow-inner">
+          <img src={img} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt={title} />
+      </div>
+      <h4 className="font-['Playfair_Display'] text-[15px] font-bold leading-tight group-hover:text-[#8e7eb5] transition-colors">{title}</h4>
     </div>
-    <h4 className="font-['Playfair_Display'] text-[15px] font-bold leading-tight group-hover:text-[#8e7eb5] transition-colors">{title}</h4>
-  </div>
-);
+  );
+};
 
 const CatButton = ({ label, icon, color }) => (
   <button className={`${color} px-4 py-4 rounded-2xl font-bold text-[11px] hover:shadow-lg hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 border border-white/20 shadow-sm`}>
