@@ -8,7 +8,6 @@ import Auth from './components/Auth';
 import './App.css';
 
 // Korumalı Rota (Protected Route) Bileşeni
-// Token yoksa kullanıcıyı zorla login sayfasına atar
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -25,14 +24,17 @@ function App() {
           {/* Giriş ve Kayıt Sayfası */}
           <Route path="/login" element={<Auth />} />
           
-          {/* Dashboard (Korumalı) */}
-          <Route path="/" element={
+          {/* Dashboard artık /dashboard linkinde çalışacak */}
+          <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           } />
+
+          {/* Eğer birisi direkt boş linke (/) girerse otomatik /dashboard'a yönlendirsin */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           
-          {/* Arkadaşının Sayfaları (İstersen bunları da ProtectedRoute içine alabilirsin) */}
+          {/* Diğer Sayfalar */}
           <Route path="/explore" element={<Explore />} />
           <Route path="/product" element={<ProductDetail />} />
           <Route path="/social" element={<SocialPanel />} />
