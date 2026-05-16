@@ -189,25 +189,39 @@ const BrowseCard = ({ title, img }) => {
   );
 };
 
-const CatButton = ({ label, icon, color }) => (
-  <button className={`${color} px-4 py-4 rounded-2xl font-bold text-[11px] hover:shadow-lg hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 border border-white/20 shadow-sm`}>
-    <span className="opacity-60">{icon}</span>
-    {label}
-  </button>
-);
+const CatButton = ({ label, icon, color }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <button 
+      onClick={() => navigate("/explore", { state: { category: label } })} // Giderken label bilgisini (örn: Vinyl) cebe atıyoruz
+      className={`${color} px-4 py-4 rounded-2xl font-bold text-[11px] hover:shadow-lg hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3 border border-white/20 shadow-sm cursor-pointer`}
+    >
+      <span className="opacity-60">{icon}</span>
+      {label}
+    </button>
+  );
+};
 
-const RecommendationCard = ({ title, author, img }) => (
-  <div className="bg-white/90 backdrop-blur-sm rounded-[24px] p-5 flex gap-4 shadow-sm hover:shadow-2xl hover:scale-[1.05] hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-white/30 group">
-    <img src={img} className="w-12 h-16 rounded-lg object-cover shadow-md flex-shrink-0 group-hover:rotate-2 transition-transform" alt={title} />
-    <div className="flex flex-col justify-center">
-      <h4 className="text-[12px] font-black leading-tight text-gray-800 group-hover:text-[#8e7eb5] transition-colors">{title}</h4>
-      <p className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-tighter">{author}</p>
-      <div className="flex mt-3 -space-x-1 opacity-80">
-         <img src="https://i.pravatar.cc/100?img=11" className="w-5 h-5 rounded-full border border-white shadow-sm" alt=""/>
-         <img src="https://i.pravatar.cc/100?img=32" className="w-5 h-5 rounded-full border border-white shadow-sm" alt=""/>
+const RecommendationCard = ({ title, author, img }) => {
+  const navigate = useNavigate(); // Sayfa değiştirebilmek için bunu ekledik
+  
+  return (
+    <div 
+      onClick={() => navigate("/social")} // Kartın herhangi bir yerine basınca Social Hub'a uçurur
+      className="bg-white/90 backdrop-blur-sm rounded-[24px] p-5 flex gap-4 shadow-sm hover:shadow-2xl hover:scale-[1.05] hover:-translate-y-1 transition-all duration-300 cursor-pointer border border-white/30 group"
+    >
+      <img src={img} className="w-12 h-16 rounded-lg object-cover shadow-md flex-shrink-0 group-hover:rotate-2 transition-transform" alt={title} />
+      <div className="flex flex-col justify-center">
+        <h4 className="text-[12px] font-black leading-tight text-gray-800 group-hover:text-[#8e7eb5] transition-colors">{title}</h4>
+        <p className="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-tighter">{author}</p>
+        <div className="flex mt-3 -space-x-1 opacity-80">
+           <img src="https://i.pravatar.cc/100?img=11" className="w-5 h-5 rounded-full border border-white shadow-sm" alt=""/>
+           <img src="https://i.pravatar.cc/100?img=32" className="w-5 h-5 rounded-full border border-white shadow-sm" alt=""/>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default Dashboard;
