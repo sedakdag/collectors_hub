@@ -42,6 +42,7 @@ def startup_event():
     if conn:
         try:
             cursor = conn.cursor()
+            # Favoriler Tablosu Kontrolü
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS favorites (
                     id SERIAL PRIMARY KEY,
@@ -51,13 +52,24 @@ def startup_event():
                     UNIQUE(user_id, item_id)
                 );
             """)
+            # Arkadaşlar Tablosu Kontrolü
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS friends (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    friend_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, friend_id)
+                );
+            """)
             conn.commit()
             cursor.close()
             conn.close()
-            print("FAVORİLER TABLOSU BAŞARIYLA KONTROL EDİLDİ/OLUŞTURULDU! 🌟")
+            print("TABLOLAR BAŞARIYLA KONTROL EDİLDİ/OLUŞTURULDU! 🌟")
         except Exception as e:
             print(f"Tablo oluşturma hatası: {e}")   
 
+# --- REQUEST / RESPONSE MODELLERİ ---
 class User(BaseModel):
     username: str
     email: str
@@ -70,8 +82,8 @@ class LoginRequest(BaseModel):
 class CollectionItem(BaseModel):
     title: str
     category: str
-    img: Optional[str] = None # Base64 formatında şifrelenmiş görsel (isteğe bağlı)
-    image_url: Optional[str] = None # Varsa mevcut görsel URL'i (marketplace'ten gelen)
+    img: Optional[str] = None
+    image_url: Optional[str] = None
     is_for_sale: bool = False
     is_for_swap: bool = False
     price: Optional[float] = None
@@ -84,6 +96,11 @@ class ProfileUpdateRequest(BaseModel):
     email: str
     password: Optional[str] = None
 
+class FriendRequest(BaseModel):
+    username: str      
+    friend_name: str   
+
+# --- YARDIMCI FONKSİYONLAR ---
 def get_password_hash(password):
     return pwd_context.hash(password)
 
@@ -93,6 +110,7 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+# --- AUTH ENDPOINT'LERİ ---
 @app.post("/signup")
 async def signup(user: User):
     conn = get_db_connection()
@@ -152,6 +170,7 @@ async def login(request: LoginRequest):
         if conn: conn.close()
         raise HTTPException(status_code=500, detail=f"Giriş hatası: {str(e)}")
 
+# --- KOLEKSİYON PARÇALARI ENDPOINT'LERİ (ITEMS) ---
 @app.get("/api/items")
 async def get_all_items(username: Optional[str] = None):
     conn = get_db_connection()
@@ -193,7 +212,6 @@ async def get_single_item(item_id: int):
         raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        # Ürünü kategorisi ve kullanıcı adıyla birlikte çekiyoruz
         query = """
             SELECT items.*, categories.name as category, users.username as owner
             FROM items 
@@ -252,13 +270,8 @@ async def update_item(item_id: int, item: CollectionItem):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-
-        # Eğer React'tan Base64 formatında (img) yeni bir görsel gelirse onu kullanırız,
-        # gelmezse mevcut image_url'i koruruz.
         final_image_url = item.image_url
         if item.img:
-            # Not: Gerçek bir üretim ortamında bu Base64 verisi S3 gibi bir bulut depolama servisine yüklenip
-            # URL'e dönüştürülmelidir. Biz simülasyon gereği veriyi doğrudan kaydediyoruz.
             final_image_url = item.img
 
         query = """
@@ -272,6 +285,28 @@ async def update_item(item_id: int, item: CollectionItem):
         cursor.close()
         conn.close()
         return {"message": "Ürün ve görsel başarıyla güncellendi! 🚀"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/items/{item_id}")
+async def delete_item(item_id: int):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM items WHERE id = %s;", (item_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Silinmek istenen parça bulunamadı!")
+
+        cursor.execute("DELETE FROM items WHERE id = %s;", (item_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Koleksiyon parçası başarıyla silindi! 🗑️"}
     except Exception as e:
         if conn: conn.rollback(); conn.close()
         raise HTTPException(status_code=500, detail=str(e))
@@ -290,16 +325,14 @@ async def get_categories():
         if conn: conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- KULLANICI PROFİL ENDPOINT'LERİ ---
 @app.put("/api/user/profile")
 async def update_user_profile(request: ProfileUpdateRequest):
     conn = get_db_connection()
     if not conn:
         raise HTTPException(status_code=500, detail="Veritabanı bağlantı hatası!")
-    
     try:
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        
-        # Python mantığına göre and / or kelimelerini düzelttik!
         if request.password and request.password != "********" and request.password.strip() != "":
             hashed_password = get_password_hash(request.password)
             query = "UPDATE users SET username = %s, email = %s, password = %s WHERE username = %s;"
@@ -313,37 +346,10 @@ async def update_user_profile(request: ProfileUpdateRequest):
         conn.close()
         return {"message": "Profil bilgileri ve şifre başarıyla güncellendi! 🔐"}
     except Exception as e:
-        if conn:
-            conn.rollback()
-            conn.close()
+        if conn: conn.rollback(); conn.close()
         raise HTTPException(status_code=500, detail=f"Profil güncelleme hatası: {str(e)}")
 
-@app.delete("/api/items/{item_id}")
-async def delete_item(item_id: int):
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
-    try:
-        cursor = conn.cursor()
-        # Ürünün var olup olmadığını kontrol edelim
-        cursor.execute("SELECT id FROM items WHERE id = %s;", (item_id,))
-        if not cursor.fetchone():
-            cursor.close()
-            conn.close()
-            raise HTTPException(status_code=404, detail="Silinmek istenen parça bulunamadı!")
-
-        # Silme işlemini gerçekleştirelim
-        cursor.execute("DELETE FROM items WHERE id = %s;", (item_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return {"message": "Koleksiyon parçası başarıyla silindi! 🗑️"}
-    except Exception as e:
-        if conn: conn.rollback(); conn.close()
-        raise HTTPException(status_code=500, detail=str(e))
-   
-    
-# --- FAVORİLERİ GETİREN ENDPOINT ---
+# --- FAVORİLER ENDPOINT'LERİ ---
 @app.get("/api/favorites")
 async def get_favorites(username: Optional[str] = "koleksiyoner1"):
     conn = get_db_connection()
@@ -369,7 +375,6 @@ async def get_favorites(username: Optional[str] = "koleksiyoner1"):
         if conn: conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- FAVORİYE ÜRÜN EKLEME ENDPOINT'İ ---
 @app.post("/api/favorites/{item_id}")
 async def add_to_favorites(item_id: int, username: Optional[str] = "koleksiyoner1"):
     conn = get_db_connection()
@@ -391,7 +396,6 @@ async def add_to_favorites(item_id: int, username: Optional[str] = "koleksiyoner
         if conn: conn.rollback(); conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- FAVORİDEN ÜRÜN SİLME ENDPOINT'İ ---
 @app.delete("/api/favorites/{item_id}")
 async def remove_from_favorites(item_id: int, username: Optional[str] = "koleksiyoner1"):
     conn = get_db_connection()
@@ -412,3 +416,160 @@ async def remove_from_favorites(item_id: int, username: Optional[str] = "koleksi
     except Exception as e:
         if conn: conn.rollback(); conn.close()
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- DİNAMİK ARKADAŞLIK ENDPOINT'LERİ (AUTO-CREATE DESTEKLİ) ---
+@app.get("/api/friends")
+async def get_my_friends(username: Optional[str] = "koleksiyoner1"):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanı bağlantısı koptu!")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        query = """
+            SELECT users.id, users.username as name, users.email, 
+                   'Collector Partner' as role, true as online,
+                   'https://api.dicebear.com/7.x/avataaars/svg?seed=' || users.username as avatar,
+                   COALESCE(COUNT(items.id), 0) as itemscount
+            FROM friends
+            JOIN users ON friends.friend_id = users.id
+            LEFT JOIN items ON users.id = items.user_id
+            WHERE friends.user_id = (SELECT id FROM users WHERE username = %s)
+            GROUP BY users.id, users.username, users.email;
+        """
+        cursor.execute(query, (username,))
+        my_friends = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return my_friends
+    except Exception as e:
+        if conn: conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/friends")
+async def add_friend(req: FriendRequest):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanı bağlantı hatası!")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # 1. İstek atan kullanıcının ID'sini bul, yoksa otomatik aç
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (req.username,))
+        u_res = cursor.fetchone()
+        if not u_res:
+            cursor.execute(
+                "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id;",
+                (req.username, f"{req.username}@hub.com", "12345")
+            )
+            u_res = cursor.fetchone()
+            conn.commit()
+        
+        # 2. Arkadaşın ID'sini bul, yoksa veritabanında otomatik satır oluştur (500 Hatasını Önler) 🔥
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (req.friend_name,))
+        f_res = cursor.fetchone()
+        if not f_res:
+            clean_email = f"{req.friend_name.lower().replace(' ', '')}@hub.com"
+            cursor.execute(
+                "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id;",
+                (req.friend_name, clean_email, "12345")
+            )
+            f_res = cursor.fetchone()
+            conn.commit()
+            
+        # 3. İki tarafın bağını güvenle friends tablosuna mühürle
+        query = "INSERT INTO friends (user_id, friend_id) VALUES (%s, %s) ON CONFLICT DO NOTHING;"
+        cursor.execute(query, (u_res['id'], f_res['id']))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": f"{req.friend_name} başarıyla veritabanı arkadaşlarına eklendi! 🚀"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/friends")
+async def remove_friend(req: FriendRequest):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanı bağlantı hatası!")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (req.username,))
+        u_res = cursor.fetchone()
+        
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (req.friend_name,))
+        f_res = cursor.fetchone()
+        
+        if u_res and f_res:
+            query = "DELETE FROM friends WHERE user_id = %s AND friend_id = %s;"
+            cursor.execute(query, (u_res['id'], f_res['id']))
+            conn.commit()
+        
+        cursor.close()
+        conn.close()
+        return {"message": "Arkadaş veritabanından başarıyla silindi! 🗑️"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+class RecommendRequest(BaseModel):
+    username: str
+    item_id: int
+
+# --- 1. ÖNERİLERİ LİSTELE (GET) ---
+@app.get("/api/recommendations")
+async def get_recommendations():
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanı bağlantısı koptu!")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        # En son önerilen 3 ürünü, öneren kullanıcının adı ve ürün bilgileriyle çekiyoruz
+        query = """
+            SELECT items.*, users.username as owner, categories.name as category_name
+            FROM recommendations
+            JOIN items ON recommendations.item_id = items.id
+            JOIN users ON recommendations.user_id = users.id
+            LEFT JOIN categories ON items.category_id = categories.id
+            ORDER BY recommendations.id DESC;
+            
+        """
+        cursor.execute(query)
+        recs = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return recs
+    except Exception as e:
+        if conn: conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- 2. YENİ ÖNERİ EKLE (POST) ---
+@app.post("/api/recommendations")
+async def add_recommendation(req: RecommendRequest):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanı bağlantı hatası!")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # İstek atan kullanıcının ID'sini bul
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (req.username,))
+        u_res = cursor.fetchone()
+        
+        if not u_res:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı!")
+            
+        # Aynı ürünün bu kullanıcı tarafından tekrar önerilmesini DB seviyesinde de koruyoruz (UNIQUE CONSTRAINT)
+        query = "INSERT INTO recommendations (user_id, item_id) VALUES (%s, %s) ON CONFLICT DO NOTHING;"
+        cursor.execute(query, (u_res['id'], req.item_id))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Öneri başarıyla veritabanına mühürlendi! 🚀"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))    

@@ -30,6 +30,33 @@ CREATE TABLE IF NOT EXISTS items (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- BİRBİRİMİZE BAĞLADIĞIMIZ O MEŞHUR FAVORİLER TABLOSU 🚀
+CREATE TABLE IF NOT EXISTS favorites (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, item_id)
+);
+
+-- GERÇEK SOSYAL BAĞLANTIYI SAĞLAYACAK OLAN ARKADAŞLAR TABLOSU 🔥
+CREATE TABLE IF NOT EXISTS friends (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    friend_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, friend_id)
+);
+
+-- DÜNYALARI BAĞLADIĞIMIZ O KALICI ÖNERİLER (RECOMMENDATIONS) TABLOSU ✨
+CREATE TABLE IF NOT EXISTS recommendations (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, item_id)
+);
+
 -- ========================================================
 -- 2. BAŞLANGIÇ VERİLERİ (SEED DATA)
 -- ========================================================
@@ -56,3 +83,19 @@ INSERT INTO items (user_id, category_id, title, artist, image_url, is_for_sale, 
 (1, 4, 'Polaroid Sun 600', 'Vintage Camera', 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&q=80', false, false, NULL, 'Fully tested 1980s retro instant film camera.', 'Good (7/10)'),
 (1, 5, 'Greetings from Tokyo', 'Vintage Postcard', 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&q=80', true, false, 120.00, 'Authentic 1970s handwritten and stamped postcard.', 'Fair (6/10)'),
 (1, 6, 'Signed Star Wars Script', 'George Lucas', 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=500&q=80', false, true, NULL, 'Original New Hope script copy with authentic signature.', 'Mint (10/10)');
+
+-- Başlangıçta boş kalmasın diye birkaç tane de örnek Favori ekliyoruz
+INSERT INTO favorites (user_id, item_id) VALUES 
+(1, 1),
+(1, 3);
+
+-- Başlangıçta Seda ile birbirimizi tanıyalım (user_id: 1 olan koleksiyoner1, user_id: 2 olan seda ile arkadaş olsun)
+INSERT INTO friends (user_id, friend_id) VALUES 
+(1, 2),
+(2, 1);
+
+-- Başlangıçta boş kalmasın diye örnek Öneriler (Recommendations) ekliyoruz 🌟
+-- Örneğin: 1 id'li kullanıcı (koleksiyoner1), 1 id'li (Abbey Road) ve 2 id'li (BTS) ürünleri önermiş olsun:
+INSERT INTO recommendations (user_id, item_id) VALUES 
+(1, 1),
+(1, 2);

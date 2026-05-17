@@ -63,11 +63,11 @@ const Saved = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfaf3] p-10 font-['Montserrat'] text-[#333]">
-      {/* Üst Bar */}
-      <header className="flex items-center gap-4 mb-12 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#fdfaf3] p-10 font-['Montserrat'] text-[#333] flex flex-col h-screen overflow-hidden">
+      {/* Üst Bar - Esnemeyi önlemek için flex-shrink-0 çaktık */}
+      <header className="flex items-center gap-4 mb-10 w-full max-w-5xl mx-auto flex-shrink-0">
         <button 
-          onClick={() => navigate("/dashboard")} // Güvenli bir şekilde ana panele yönlendirir
+          onClick={() => navigate("/")} // Güvenli bir şekilde ana panele yönlendirir kanka
           className="p-2 hover:bg-white rounded-full transition-all text-[#8e7eb5] cursor-pointer"
         >
           <ChevronLeft size={24} />
@@ -77,8 +77,8 @@ const Saved = () => {
         </h1>
       </header>
 
-      {/* Ana İçerik Alanı */}
-      <main className="max-w-5xl mx-auto">
+      {/* --- ANA İÇERİK ALANI: BURASI ARTIK İÇERİDEN YÜKSEKLİK KORUMALI VE SCROLLABLE --- */}
+      <main className="w-full max-w-5xl mx-auto flex-1 overflow-y-auto pb-10 pr-2 scrollbar-none">
         {savedItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center bg-white/40 border border-[#e8dfd0] rounded-[40px] p-16 md:p-24 backdrop-blur-md shadow-sm text-center">
             <div className="w-20 h-20 bg-[#dfd3ef]/50 rounded-full flex items-center justify-center text-[#8e7eb5] mb-6">
@@ -96,31 +96,34 @@ const Saved = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {savedItems.map(item => (
               <div 
                 key={item.id} 
                 onClick={() => navigate(`/product/${item.id}`)}
-                className="bg-white p-5 rounded-[30px] shadow-sm hover:shadow-xl transition-all group cursor-pointer border border-[#f0ebe0]/50 relative"
+                className="bg-white p-5 rounded-[30px] shadow-sm hover:shadow-xl transition-all group cursor-pointer border border-[#f0ebe0]/50 relative flex flex-col justify-between"
               >
-                <div className="relative aspect-[3/4] overflow-hidden rounded-2xl mb-4 bg-[#ebe4d8]/30">
-                   <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={item.title} />
-                   
-                   <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-2 rounded-full text-[#8e7eb5]">
-                     {getCategoryIcon(item.category_id)}
-                   </div>
+                <div>
+                  <div className="relative aspect-[3/4] overflow-hidden rounded-2xl mb-4 bg-[#ebe4d8]/30">
+                     <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={item.title} />
+                     
+                     <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-2 rounded-full text-[#8e7eb5]">
+                       {getCategoryIcon(item.category_id)}
+                     </div>
 
-                   <button 
-                     onClick={(e) => handleRemoveItem(e, item.id)}
-                     className="absolute bottom-3 right-3 bg-red-50 text-red-400 p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-400 hover:text-white shadow-sm cursor-pointer"
-                     title="Favorilerden Kaldır"
-                   >
-                     <Trash2 size={14} />
-                   </button>
+                     <button 
+                       onClick={(e) => handleRemoveItem(e, item.id)}
+                       className="absolute bottom-3 right-3 bg-red-50 text-red-400 p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-400 hover:text-white shadow-sm cursor-pointer"
+                       title="Favorilerden Kaldır"
+                     >
+                       <Trash2 size={14} />
+                     </button>
+                  </div>
+                  <h3 className="font-['Playfair_Display'] text-lg font-bold text-gray-800 line-clamp-1">{item.title}</h3>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-tighter mt-1">{item.artist || "Unknown Artist"}</p>
                 </div>
-                <h3 className="font-['Playfair_Display'] text-lg font-bold text-gray-800 line-clamp-1">{item.title}</h3>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-tighter mt-1">{item.artist || "Unknown Artist"}</p>
-                <div className="mt-4 flex justify-between items-center">
+                
+                <div className="mt-4 flex justify-between items-center w-full">
                   <span className="text-[#d4a373] font-bold text-sm">
                     {item.price && parseFloat(item.price) > 0 ? `${parseInt(item.price)} TL` : "Swap Only"}
                   </span>
