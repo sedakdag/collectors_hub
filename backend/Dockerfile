@@ -13,7 +13,8 @@ RUN pip install --no-cache-dir \
     "uvicorn" \
     "python-jose[cryptography]" \
     "passlib[bcrypt]" \
-    "bcrypt==4.0.1"
+    "bcrypt==4.0.1" \
+    "psycopg2-binary==2.9.9"
 # Portu aç
 EXPOSE 5000
 
