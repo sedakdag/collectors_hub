@@ -122,7 +122,12 @@ const Dashboard = () => {
               </span>
               <div className="relative z-10 ml-6 transition-all duration-500 group-hover:-translate-y-4 group-hover:rotate-2">
                 <div className="absolute -top-1 right-4 w-5 h-8 bg-[#d4c1ee] [clip-path:polygon(0_0,100%_0,100%_100%,50%_80%,0_100%)] z-20 shadow-sm" />
-                <img src={item.img || "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400"} className="w-36 h-52 rounded-2xl object-cover shadow-2xl border-white border-[3px]" alt={item.title} />
+                {/* src kısmını hem yerel hem veritabanı uyumlu yaptık! */}
+                <img 
+                  src={item.image_url || item.img || "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400"} 
+                  className="w-36 h-52 rounded-2xl object-cover shadow-2xl border-white border-[3px]" 
+                  alt={item.title} 
+                />
               </div>
             </div>
           ))}

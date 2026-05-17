@@ -77,7 +77,12 @@ async def login(request: LoginRequest):
     access_token = create_access_token(data={"sub": request.email})
     return {"access_token": access_token, "token_type": "bearer", "username": user["username"]}
 
-# --- ARTIK GERÇEK POSTGRESQL'DEN VERİ ÇEKEN ENDPOINT ---
+class CollectionItem(BaseModel):
+    title: str
+    img: str
+    category: str
+
+# --- 1. GERÇEK VERİTABANINDAN VERİ ÇEKEN GET ENDPOINT ---
 @app.get("/api/items")
 async def get_all_items():
     conn = get_db_connection()
@@ -85,10 +90,15 @@ async def get_all_items():
         raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
     
     try:
-        cursor = conn.cursor()
-        # Arkadaşının index.js'de yazdığı sorgunun aynısı:
-        cursor.execute("SELECT * FROM items;")
+        # RealDictCursor kullanarak verileri tuple yerine direkt Python sözlüğü (dict) olarak çekiyoruz.
+        # Böylece React tarafında "item.title", "item.img" kodların hiç patlamadan tıkır tıkır çalışır.
+        from psycopg2.extras import RealDictCursor
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # En son eklenen parça en üstte gözüksün diye id'ye göre tersten sıraladık (büyük kolaylık!)
+        cursor.execute("SELECT * FROM items ORDER BY id DESC;")
         items = cursor.fetchall()
+        
         cursor.close()
         conn.close()
         return items
@@ -96,3 +106,38 @@ async def get_all_items():
         if conn:
             conn.close()
         raise HTTPException(status_code=500, detail=f"Sorgu hatası: {str(e)}")
+
+# --- 2. GERÇEK VERİTABANINA YAZAN POST ENDPOINT ---
+@app.post("/api/items")
+async def add_new_item(item: CollectionItem):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Kategoriyi ID'ye dönüştürme simülasyonu (seed.sql ile tam uyumlu)
+        category_id = 1 # Varsayılan: Vinyl
+        if item.category == "Photocards":
+            category_id = 3 # K-pop Photocard
+        elif item.category == "CDs":
+            category_id = 2 # CD
+
+        # Sorguyu seed.sql'deki kolon adı olan "image_url" ile güncelledik!
+        query = """
+            INSERT INTO items (title, image_url, category_id, artist, is_for_sale) 
+            VALUES (%s, %s, %s, %s, %s);
+        """
+        # Şimdilik artist alanına boşluk, satılık mı alanına false geçiyoruz
+        cursor.execute(query, (item.title, item.img, category_id, "", False))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Ürün başarıyla veritabanına eklendi! 🚀"}
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        raise HTTPException(status_code=500, detail=f"Veritabanına ekleme hatası: {str(e)}")
