@@ -47,8 +47,9 @@ class LoginRequest(BaseModel):
 
 class CollectionItem(BaseModel):
     title: str
-    img: str
     category: str
+    img: Optional[str] = None # Base64 formatında şifrelenmiş görsel (isteğe bağlı)
+    image_url: Optional[str] = None # Varsa mevcut görsel URL'i (marketplace'ten gelen)
     is_for_sale: bool = False
     is_for_swap: bool = False
     price: Optional[float] = None
@@ -201,17 +202,26 @@ async def update_item(item_id: int, item: CollectionItem):
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
+
+        # Eğer React'tan Base64 formatında (img) yeni bir görsel gelirse onu kullanırız,
+        # gelmezse mevcut image_url'i koruruz.
+        final_image_url = item.image_url
+        if item.img:
+            # Not: Gerçek bir üretim ortamında bu Base64 verisi S3 gibi bir bulut depolama servisine yüklenip
+            # URL'e dönüştürülmelidir. Biz simülasyon gereği veriyi doğrudan kaydediyoruz.
+            final_image_url = item.img
+
         query = """
             UPDATE items 
             SET title=%s, image_url=%s, category_id=(SELECT id FROM categories WHERE name=%s), 
                 is_for_sale=%s, is_for_swap=%s, price=%s, description=%s, condition=%s
             WHERE id=%s;
         """
-        cursor.execute(query, (item.title, item.img, item.category, item.is_for_sale, item.is_for_swap, item.price, item.description, item.condition, item_id))
+        cursor.execute(query, (item.title, final_image_url, item.category, item.is_for_sale, item.is_for_swap, item.price, item.description, item.condition, item_id))
         conn.commit()
         cursor.close()
         conn.close()
-        return {"message": "Ürün başarıyla güncellendi!"}
+        return {"message": "Ürün ve görsel başarıyla güncellendi! 🚀"}
     except Exception as e:
         if conn: conn.rollback(); conn.close()
         raise HTTPException(status_code=500, detail=str(e))
@@ -257,3 +267,27 @@ async def update_user_profile(request: ProfileUpdateRequest):
             conn.rollback()
             conn.close()
         raise HTTPException(status_code=500, detail=f"Profil güncelleme hatası: {str(e)}")
+
+@app.delete("/api/items/{item_id}")
+async def delete_item(item_id: int):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    try:
+        cursor = conn.cursor()
+        # Ürünün var olup olmadığını kontrol edelim
+        cursor.execute("SELECT id FROM items WHERE id = %s;", (item_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Silinmek istenen parça bulunamadı!")
+
+        # Silme işlemini gerçekleştirelim
+        cursor.execute("DELETE FROM items WHERE id = %s;", (item_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Koleksiyon parçası başarıyla silindi! 🗑️"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
