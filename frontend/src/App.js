@@ -7,6 +7,7 @@ import SocialPanel from './components/SocialPanel';
 import Auth from './components/Auth'; 
 import Profile from './components/Profile';
 import AddItem from './components/AddItem';
+import Saved from "./components/Saved";
 import './App.css';
 
 // Korumalı Rota (Protected Route) Bileşeni
@@ -51,7 +52,8 @@ function App() {
           
           {/* Diğer Sayfalar */}
           <Route path="/explore" element={<Explore />} />
-          <Route path="/product" element={<ProductDetail />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/saved" element={<Saved />} />
           <Route path="/social" element={<SocialPanel />} />
         </Routes>
       </div>

@@ -35,6 +35,28 @@ def get_db_connection():
     except Exception as e:
         print(f"VERİTABANI BAĞLANTI HATASI: {e}")
         return None
+    
+@app.on_event("startup")
+def startup_event():
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, item_id)
+                );
+            """)
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print("FAVORİLER TABLOSU BAŞARIYLA KONTROL EDİLDİ/OLUŞTURULDU! 🌟")
+        except Exception as e:
+            print(f"Tablo oluşturma hatası: {e}")   
 
 class User(BaseModel):
     username: str
@@ -164,6 +186,34 @@ async def get_all_items(username: Optional[str] = None):
         if conn: conn.close()
         raise HTTPException(status_code=500, detail=f"Sorgu hatası: {str(e)}")
 
+@app.get("/api/items/{item_id}")
+async def get_single_item(item_id: int):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        # Ürünü kategorisi ve kullanıcı adıyla birlikte çekiyoruz
+        query = """
+            SELECT items.*, categories.name as category, users.username as owner
+            FROM items 
+            LEFT JOIN categories ON items.category_id = categories.id
+            LEFT JOIN users ON items.user_id = users.id
+            WHERE items.id = %s;
+        """
+        cursor.execute(query, (item_id,))
+        item = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if not item:
+            raise HTTPException(status_code=404, detail="Aradığınız koleksiyon parçası bulunamadı!")
+            
+        return item
+    except Exception as e:
+        if conn: conn.close()
+        raise HTTPException(status_code=500, detail=f"Veri çekme hatası: {str(e)}")
+    
 @app.post("/api/items")
 async def add_new_item(item: CollectionItem):
     conn = get_db_connection()
@@ -288,6 +338,77 @@ async def delete_item(item_id: int):
         cursor.close()
         conn.close()
         return {"message": "Koleksiyon parçası başarıyla silindi! 🗑️"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+   
+    
+# --- FAVORİLERİ GETİREN ENDPOINT ---
+@app.get("/api/favorites")
+async def get_favorites(username: Optional[str] = "koleksiyoner1"):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        query = """
+            SELECT items.*, categories.name as category_name 
+            FROM favorites
+            JOIN items ON favorites.item_id = items.id
+            JOIN users ON favorites.user_id = users.id
+            LEFT JOIN categories ON items.category_id = categories.id
+            WHERE users.username = %s
+            ORDER BY favorites.id DESC;
+        """
+        cursor.execute(query, (username,))
+        fav_items = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return fav_items
+    except Exception as e:
+        if conn: conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- FAVORİYE ÜRÜN EKLEME ENDPOINT'İ ---
+@app.post("/api/favorites/{item_id}")
+async def add_to_favorites(item_id: int, username: Optional[str] = "koleksiyoner1"):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (username,))
+        user_res = cursor.fetchone()
+        user_id = user_res['id'] if user_res else 1
+
+        query = "INSERT INTO favorites (user_id, item_id) VALUES (%s, %s) ON CONFLICT DO NOTHING;"
+        cursor.execute(query, (user_id, item_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Ürün gerçek veritabanı favorilerine eklendi! 🌟"}
+    except Exception as e:
+        if conn: conn.rollback(); conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- FAVORİDEN ÜRÜN SİLME ENDPOINT'İ ---
+@app.delete("/api/favorites/{item_id}")
+async def remove_from_favorites(item_id: int, username: Optional[str] = "koleksiyoner1"):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE username = %s;", (username,))
+        user_res = cursor.fetchone()
+        user_id = user_res['id'] if user_res else 1
+
+        query = "DELETE FROM favorites WHERE user_id = %s AND item_id = %s;"
+        cursor.execute(query, (user_id, item_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"message": "Ürün veritabanı favorilerinden silindi! 🗑️"}
     except Exception as e:
         if conn: conn.rollback(); conn.close()
         raise HTTPException(status_code=500, detail=str(e))
